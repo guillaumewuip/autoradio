@@ -11,6 +11,12 @@
 #include <RDSParser.h>
 #include "RADIO_LCD.h"
 
+//@see http://playground.arduino.cc/Code/Buttons
+#include <buttons.h>
+
+//@see https://github.com/guillaumewuip/clioSteeringWheelCmd
+#include <CLIO_STEERING_WHEEL_CMD.h>
+
 #define LCD_ADDR      0x3F
 #define LCD_BACKLIGHT 3
 
@@ -26,6 +32,12 @@
 #define D6_pin 6
 #define D7_pin 7
 #define B1_pin 3
+
+#define BMode_pin   4
+#define BUp_pin     5
+#define BDown_pin   6
+#define BTimer      700
+#define BRefresh    500
 
 #define FIX_BAND  RADIO_BAND_FM
 #define MAXVOLUME 15
@@ -60,6 +72,14 @@ LiquidCrystal_I2C _lcd(LCD_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin,
 SI4703 radio;
 RDSParser rds;
 RADIO_LCD lcd(LCD_BACKLIGHT);
+
+uint8_t  ctrl_inputs[3]  = {0, 1, 2}; //analog A0, A1, A2
+uint8_t  ctrl_outputs[3] = {10, 9, 8}; //digital D7, D6, D5
+WHEEL_CMD controller(ctrl_inputs, ctrl_outputs);
+
+Button BMode;
+Button BUp;
+Button BDown;
 
 uint8_t mode   = NORMAL_MODE;
 uint8_t screen = TITLE_SCREEN;
@@ -136,114 +156,6 @@ void changeScreen(uint8_t s) {
     screenCounter = 0;
 };
 
-String up() {
-    String command;
-
-    if (mode == NORMAL_MODE) {
-        command = F("Volume +1");
-        uint8_t volume = radio.getVolume();
-        if (volume < MAXVOLUME) {
-            volume += 1;
-        }
-
-        radio.setVolume(volume);
-        changeScreen(VOLUME_SCREEN);
-        EEPROM.update(VOLUME_ADDR, volume + 1);
-
-    } else if (mode == BACKLIGHT_MODE) {
-        command = F("Backlight +1");
-        uint8_t light = lcd.backlightUp();
-        changeScreen(LIGHT_SCREEN);
-        EEPROM.update(LIGHT_ADDR, light + 1);
-
-    } else if (mode == PREF_MODE) {
-        command = F("Preference up");
-        int8_t currentPref = indexOfArray(preferences, PREF_LENTGH,
-                radio.getFrequency());
-
-        //if we're not on a pref currently
-        if (currentPref == -1 && preferences[0] > 0) {
-            changeFrequency(preferences[0]);
-        //if we're on a pref already
-        } else if (currentPref > -1) {
-            //there is a pref after
-            if (currentPref + 1 < PREF_LENTGH
-                    && preferences[currentPref + 1] > 0) {
-
-                changeFrequency(preferences[currentPref + 1]);
-            } else {
-                changeFrequency(preferences[0]); //reset
-            }
-        }
-    } else if (mode == SEEK_MODE) {
-        command = F("Seek up");
-
-        radio.seekUp();
-        changeScreen(SEARCH_SCREEN_UP);
-        writeInt16EEPROM(FREQ_ADDR, radio.getFrequency() + 1);
-    } else if (mode == SEARCH_MODE) {
-        command = moveFrequency(stepFrequency);
-    }
-
-    return command;
-};
-
-String down() {
-    String command;
-
-    if (mode == NORMAL_MODE) {
-        command = F("Volume -1");
-        uint8_t volume = radio.getVolume();
-        if (volume > 0) {
-            volume -= 1;
-        }
-
-        radio.setVolume(volume);
-        changeScreen(VOLUME_SCREEN);
-        EEPROM.update(VOLUME_ADDR, volume + 1);
-
-    } else if (mode == BACKLIGHT_MODE) {
-        command = F("Backlight -1");
-        uint8_t light = lcd.backlightDown();
-
-        changeScreen(LIGHT_SCREEN);
-        EEPROM.update(LIGHT_ADDR, light + 1);
-
-    } else if (mode == PREF_MODE) {
-        command = F("Preference down");
-        int8_t currentPref = indexOfArray(preferences, PREF_LENTGH,
-                radio.getFrequency());
-
-        //if we're not on a pref currently
-        if (currentPref == -1 && preferences[0] > 0) {
-            changeFrequency(preferences[0]);
-
-        //if we're on a pref already
-        } else if (currentPref > -1) {
-            //there is a pref before
-            if (currentPref - 1 >= 0 && preferences[currentPref - 1] > 0) {
-                changeFrequency(preferences[currentPref - 1]);
-            } else {
-                uint8_t i = PREF_LENTGH - 1;
-                while (preferences[i] == 0) {
-                    i--;
-                }
-                changeFrequency(preferences[i]);
-            }
-        }
-    } else if (mode == SEEK_MODE) {
-        command = F("Seek down");
-        radio.seekDown();
-
-        changeScreen(SEARCH_SCREEN_DOWN);
-        writeInt16EEPROM(FREQ_ADDR, radio.getFrequency() + 1);
-    } else if (mode == SEARCH_MODE) {
-        command = moveFrequency(-stepFrequency);
-    }
-
-    return command;
-};
-
 String changeFrequency(int frequency) {
     String command;
 
@@ -276,113 +188,333 @@ String moveFrequency(int add) {
     return changeFrequency(frequency);
 };
 
-void applyCommand(char cmd) {
+String upMode() {
+    String command;
+    mode += 1;
+    if (mode > MAX_MODE) {
+        mode = 0;
+    }
+    command = F("Change mode to :");
+    command += mode;
+    changeScreen(NORMAL_MODE);
 
+    return command;
+};
+
+String changeMute() {
+    String command;
+    bool mute = !radio.getMute();
+    command = F("Mute ");
+    command += mute;
+    radio.setMute(mute);
+    changeScreen(VOLUME_SCREEN);
+    EEPROM.update(MUTE_ADDR, mute + 1);
+
+    return command;
+};
+
+String seekUp() {
+    String command = F("Seek up");
+    screen = SEARCH_SCREEN_UP;
+    radio.seekUp();
+
+    return command;
+};
+
+String seekDown() {
+    String command = F("Seek down");
+    screen = SEARCH_SCREEN_DOWN;
+    radio.seekDown();
+
+    return command;
+};
+
+String prefUp() {
+    String command = F("Preference up");
+    int8_t currentPref = indexOfArray(preferences, PREF_LENTGH, radio.getFrequency());
+
+    //if we're not on a pref currently
+    if (currentPref == -1 && preferences[0] > 0) {
+        changeFrequency(preferences[0]);
+    //if we're on a pref already
+    } else if (currentPref > -1) {
+        //there is a pref after
+        if (currentPref + 1 < PREF_LENTGH
+                && preferences[currentPref + 1] > 0) {
+
+            changeFrequency(preferences[currentPref + 1]);
+        } else {
+            changeFrequency(preferences[0]); //reset
+        }
+    }
+
+    return command;
+};
+
+String prefDown() {
+    String command = F("Preference down");
+    int8_t currentPref = indexOfArray(preferences, PREF_LENTGH, radio.getFrequency());
+
+    //if we're not on a pref currently
+    if (currentPref == -1 && preferences[0] > 0) {
+        changeFrequency(preferences[0]);
+
+    //if we're on a pref already
+    } else if (currentPref > -1) {
+        //there is a pref before
+        if (currentPref - 1 >= 0 && preferences[currentPref - 1] > 0) {
+            changeFrequency(preferences[currentPref - 1]);
+        } else {
+            uint8_t i = PREF_LENTGH - 1;
+            while (preferences[i] == 0) {
+                i--;
+            }
+            changeFrequency(preferences[i]);
+        }
+    }
+
+    return "todo";
+};
+
+String backlightUp() {
+    String command = F("Backlight +1");
+    uint8_t light = lcd.backlightUp();
+    changeScreen(LIGHT_SCREEN);
+    EEPROM.update(LIGHT_ADDR, light + 1);
+
+    return command;
+};
+
+String backlightDown() {
+    String command = F("Backlight -1");
+    uint8_t light = lcd.backlightDown();
+
+    changeScreen(LIGHT_SCREEN);
+    EEPROM.update(LIGHT_ADDR, light + 1);
+
+    return command;
+};
+
+String volUp() {
+    String command = F("Volume +1");
+    uint8_t volume = radio.getVolume();
+    if (volume < MAXVOLUME) {
+        volume += 1;
+    }
+
+    radio.setVolume(volume);
+    changeScreen(VOLUME_SCREEN);
+    EEPROM.update(VOLUME_ADDR, volume + 1);
+
+    return command;
+};
+
+String volDown() {
+    String command = F("Volume -1");
+    uint8_t volume = radio.getVolume();
+    if (volume > 0) {
+        volume -= 1;
+    }
+
+    radio.setVolume(volume);
+    changeScreen(VOLUME_SCREEN);
+    EEPROM.update(VOLUME_ADDR, volume + 1);
+
+    return command;
+};
+
+String up() {
     String command;
 
-    //Mode
-    if (cmd == 'm') {
-        mode += 1;
-        if (mode > MAX_MODE) {
-            mode = 0;
-        }
-        command = F("Change mode to :");
-        command += mode;
-        changeScreen(NORMAL_MODE);
-    }
-
-    //Volume
-    else if (cmd == '+') {
-        command = up();
-    } else if (cmd == '-') {
-        command = down();
-    }
-
-    //Station
-    else if (cmd == 'n') {
+    if (mode == NORMAL_MODE) {
+        command = volUp();
+    } else if (mode == BACKLIGHT_MODE) {
+        command = backlightUp();
+    } else if (mode == PREF_MODE) {
+        command = prefUp();
+    } else if (mode == SEEK_MODE) {
+        command = seekUp();
+    } else if (mode == SEARCH_MODE) {
         command = moveFrequency(stepFrequency);
-    } else if (cmd == 'p') {
+    }
+
+    return command;
+};
+
+String down() {
+    String command;
+
+    if (mode == NORMAL_MODE) {
+        command = volDown();
+    } else if (mode == BACKLIGHT_MODE) {
+        command = backlightDown();
+    } else if (mode == PREF_MODE) {
+        command = prefDown();
+    } else if (mode == SEEK_MODE) {
+        command = seekDown();
+    } else if (mode == SEARCH_MODE) {
         command = moveFrequency(-stepFrequency);
-    } else if (cmd == 'N') {
-        command = moveFrequency(100);
-    } else if (cmd == 'P') {
-        command = moveFrequency(-100);
     }
 
-    //Mute
-    else if (cmd == 'M') {
-        bool mute = !radio.getMute();
-        command = F("Mute ");
-        command += mute;
-        radio.setMute(mute);
-        changeScreen(VOLUME_SCREEN);
-        EEPROM.update(MUTE_ADDR, mute + 1);
+    return command;
+};
+
+String savePref() {
+    String command;
+    RADIO_FREQ frequency = radio.getFrequency();
+    int8_t index = indexOfArray(preferences, PREF_LENTGH, radio.getFrequency());
+    if (index == -1) { //add in preferences
+        command = F("Save preference");
+        savePreference(frequency);
+    } else { //remove from preferences
+        command = F("Remove preference");
+        removePreference(index);
     }
 
-    //Seek
-    else if (cmd == '>') {
-        uint8_t tmp = mode;
-        mode = SEEK_MODE;
-        command = up();
-        mode = tmp;
-    } else if (cmd == '<') {
-        uint8_t tmp = mode;
-        mode = SEEK_MODE;
-        command = down();
-        mode = tmp;
-    }
+    return command;
+};
 
-    else if (cmd == 's') {
-        RADIO_FREQ frequency = radio.getFrequency();
-        int8_t index = indexOfArray(preferences, PREF_LENTGH, radio.getFrequency());
-        if (index == -1) { //add in preferences
-            command = F("Save preference");
-            savePreference(frequency);
-        } else { //remove from preferences
-            command = F("Remove preference");
-            removePreference(index);
+void listenSerialCommand() {
+
+    char cmd;
+    String message;
+    String command;
+
+    while (Serial.available() > 0) {
+        cmd = Serial.read();
+
+        message = F("Command : ");
+        message += cmd;
+        Serial.println(message);
+
+        //Mode
+        if (cmd == 'm') {
+            command = upMode();
         }
-    }
 
-    //Info
-    else if (cmd == 'i') {
-        char s[12];
-        radio.formatFrequency(s, sizeof(s));
-        Serial.print(F("Station:"));
-        Serial.println(s);
-
-        Serial.print(F("Radio:"));
-        radio.debugRadioInfo();
-
-        Serial.print(F("Audio:"));
-        radio.debugAudioInfo();
-
-        changeScreen(INFO_SCREEN);
-    }
-
-    //reset memory
-    else if (cmd == 'r') {
-        command = F("Reset memory");
-        resetMemory();
-        changeScreen(TITLE_SCREEN);
-    }
-
-    //debug preferences on Serial
-    else if (cmd == 'f') {
-        for (uint8_t i=0; i < PREF_LENTGH; i++) {
-            Serial.print(F("Preference "));
-            Serial.print(i);
-            Serial.print(F(" : "));
-            Serial.println(preferences[i]);
+        //Volume
+        else if (cmd == '+') {
+            command = up();
+        } else if (cmd == '-') {
+            command = down();
         }
-    }
 
-    Serial.println(command);
+        //Station
+        else if (cmd == 'n') {
+            command = moveFrequency(stepFrequency);
+        } else if (cmd == 'p') {
+            command = moveFrequency(-stepFrequency);
+        } else if (cmd == 'N') {
+            command = moveFrequency(100);
+        } else if (cmd == 'P') {
+            command = moveFrequency(-100);
+        }
+
+        //Mute
+        else if (cmd == 'M') {
+            command = changeMute();
+        }
+
+        //Seek
+        else if (cmd == '>') {
+            command = seekUp();
+        } else if (cmd == '<') {
+            command = seekDown();
+        }
+
+        else if (cmd == 's') {
+            command = savePref();
+        }
+
+        //Info
+        else if (cmd == 'i') {
+            char s[12];
+            radio.formatFrequency(s, sizeof(s));
+            Serial.print(F("Station:"));
+            Serial.println(s);
+
+            Serial.print(F("Radio:"));
+            radio.debugRadioInfo();
+
+            Serial.print(F("Audio:"));
+            radio.debugAudioInfo();
+
+            changeScreen(INFO_SCREEN);
+        }
+
+        //reset memory
+        else if (cmd == 'r') {
+            command = F("Reset memory");
+            resetMemory();
+            changeScreen(TITLE_SCREEN);
+        }
+
+        //debug preferences on Serial
+        else if (cmd == 'f') {
+            for (uint8_t i=0; i < PREF_LENTGH; i++) {
+                Serial.print(F("Preference "));
+                Serial.print(i);
+                Serial.print(F(" : "));
+                Serial.println(preferences[i]);
+            }
+        }
+
+        Serial.println(command);
+    }
 }
+
+void listenControllerCommand() {
+
+    if (controller.getButton(BTN_VOL_UP) == PRESSED) {
+
+    }
+
+
+};
+
+void initButtons() {
+    BMode.assign(BMode_pin);
+    BMode.setMode(OneShotTimer);
+    BMode.setTimer(BTimer);
+    BMode.setRefresh(BRefresh);
+
+    BUp.assign(BUp_pin);
+    BUp.setMode(OneShot);
+
+    BDown.assign(BDown_pin);
+    BDown.setMode(OneShot);
+};
+
+void testButtons() {
+    switch(BMode.check()) {
+        case ON:
+            Serial.println(F("BMode ON"));
+            upMode();
+            break;
+        case Hold:
+            Serial.println(F("BMode Hold"));
+            mode = NORMAL_MODE;
+            changeScreen(NORMAL_MODE);
+            break;
+        default:
+            break;
+    }
+
+    if (BUp.check() == ON) {
+        Serial.println(F("BUp ON"));
+        up();
+    }
+
+    if (BDown.check() == ON) {
+        Serial.println(F("BDown ON"));
+        down();
+    }
+};
 
 void setup() {
 
     pinMode(LCD_BACKLIGHT, OUTPUT); //lcd backlight led
+    initButtons();
 
     Serial.begin(9600);
     Serial.println(F("Hello world"));
@@ -458,16 +590,11 @@ void setup() {
 
 void loop() {
 
-    char c;
-    String message;
-    while (Serial.available() > 0) {
-        c = Serial.read();
-        message = F("Command : ");
-        message += c;
-        Serial.println(message);
+    testButtons();
+    controller.update();
 
-        applyCommand(c);
-    }
+    listenSerialCommand();
+    listenControllerCommand();
 
     radio.checkRDS();
 
