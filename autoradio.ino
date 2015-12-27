@@ -280,7 +280,7 @@ String prefDown() {
         }
     }
 
-    return "todo";
+    return command;
 };
 
 String backlightUp() {
