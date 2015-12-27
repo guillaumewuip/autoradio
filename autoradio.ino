@@ -366,7 +366,7 @@ String down() {
     return command;
 };
 
-String savePref() {
+String prefRemoveOrSave() {
     String command;
     RADIO_FREQ frequency = radio.getFrequency();
     int8_t index = indexOfArray(preferences, PREF_LENTGH, radio.getFrequency());
@@ -430,7 +430,7 @@ void listenSerialCommand() {
         }
 
         else if (cmd == 's') {
-            command = savePref();
+            command = prefRemoveOrSave();
         }
 
         //Info
