@@ -49,7 +49,7 @@ void loadPreferences() {
  * @return  {int8_t}    index in `preferences` array or -1 if no more space
  */
 int8_t savePreference(uint16_t item) {
-    if (preferences[PREF_LENTGH] > 0) { //preferences array is full
+    if (preferences[PREF_LENTGH - 1] > 0) { //preferences array is full
                                         //so is EEPROM area
         return -1;
 
@@ -76,7 +76,7 @@ int8_t savePreference(uint16_t item) {
  */
 void removePreference(int index) {
     //check if index is ok first
-    if (index > 0 && index < PREF_LENTGH) {
+    if (index >= 0 && index < PREF_LENTGH) {
         //we need to shift preferences to left
         int addr = PREF_ADDR + index * 2; //addr of the pref on EEPROM
         int i = index + 1; //index of the next pref in `preferences`
@@ -85,10 +85,11 @@ void removePreference(int index) {
             preferences[i-1] = preferences[i];
             writeInt16EEPROM(addr, preferences[i]);
             addr += 2;
+            i++;
         }
 
         //erase last place
-        preferences[i] = 0;
-        writeInt16EEPROM(addr, 0);
+        preferences[index] = 0;
+        writeInt16EEPROM(PREF_ADDR + index * 2, 0);
     }
 };
