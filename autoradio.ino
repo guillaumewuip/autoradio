@@ -201,6 +201,13 @@ String upMode() {
     return command;
 };
 
+String resetMode() {
+    mode = NORMAL_MODE;
+    changeScreen(NORMAL_MODE);
+
+    return F("Reset mode");
+};
+
 String changeMute() {
     String command;
     bool mute = !radio.getMute();
@@ -493,8 +500,7 @@ void testButtons() {
             break;
         case Hold:
             Serial.println(F("BMode Hold"));
-            mode = NORMAL_MODE;
-            changeScreen(NORMAL_MODE);
+            resetMode();
             break;
         default:
             break;
