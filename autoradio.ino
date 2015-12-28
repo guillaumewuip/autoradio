@@ -66,6 +66,10 @@
 #define MUTE_DEFAULT    0
 #define FREQ_DEFAULT    8780
 
+//Clio controller intervals
+#define INTERVAL_CTRL_PRESS    20
+#define INTERVAL_CTRL_HOLD     250
+
 LiquidCrystal_I2C _lcd(LCD_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin,
         D6_pin, D7_pin, B1_pin, POSITIVE);
 
@@ -472,10 +476,56 @@ void listenSerialCommand() {
 
 void listenControllerCommand() {
 
-    if (controller.getButton(BTN_VOL_UP) == PRESSED) {
+    String command;
+
+    uint8_t btn_vol_up = controller.getButton(BTN_VOL_UP);
+    uint8_t btn_vol_down = controller.getButton(BTN_VOL_DOWN);
+
+    uint8_t btn_source_right = controller.getButton(BTN_SOURCE_RIGHT);
+    uint8_t btn_source_left = controller.getButton(BTN_SOURCE_LEFT);
+
+    uint8_t btn_mode = controller.getButton(BTN_MODE);
+
+    uint8_t wheel = controller.getWheel();
+
+    if (btn_vol_up == PRESSED && btn_vol_down == NO_NEWS) {
+        command = volUp();
+    }
+    if (btn_vol_down == PRESSED && btn_vol_up == NO_NEWS) {
+        command = volDown();
+    }
+
+    if (controller.getButton(BTN_MUTE) == PRESSED) {
+        command = changeMute();
+    }
+
+    if (btn_source_right == HOLD || btn_source_left == HOLD) {
+        command = prefRemoveOrSave();
+    } else {
+        if (btn_source_right == PRESSED) {
+            command = prefUp();
+        } else if (btn_source_left == PRESSED) {
+            command = prefDown();
+        }
 
     }
 
+    if(btn_mode == PRESSED) {
+        command = upMode();
+    } else if (btn_mode == HOLD) {
+        command = resetMode();
+    }
+
+    if (wheel == WHEEL_UP) {
+        command = seekUp();
+    } else if (wheel == WHEEL_DOWN) {
+        command = seekDown();
+    }
+
+    if (command.length() > 0) {
+        Serial.print("Controller cmd : ");
+        Serial.println(command);
+    }
 
 };
 
@@ -521,6 +571,9 @@ void setup() {
 
     pinMode(LCD_BACKLIGHT, OUTPUT); //lcd backlight led
     initButtons();
+
+    controller.setIntervalPress(INTERVAL_CTRL_PRESS);
+    controller.setIntervalHold(INTERVAL_CTRL_HOLD);
 
     Serial.begin(9600);
     Serial.println(F("Hello world"));
