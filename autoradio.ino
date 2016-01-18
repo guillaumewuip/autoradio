@@ -33,7 +33,7 @@
 #define D7_pin 7
 #define B1_pin 3
 
-#define BMode_pin   4
+#define BMode_pin   7
 #define BUp_pin     5
 #define BDown_pin   6
 #define BTimer      700
@@ -78,7 +78,7 @@ RDSParser rds;
 RADIO_LCD lcd(LCD_BACKLIGHT);
 
 uint8_t  ctrl_inputs[3]  = {0, 1, 2}; //analog A0, A1, A2
-uint8_t  ctrl_outputs[3] = {10, 9, 8}; //digital D7, D6, D5
+uint8_t  ctrl_outputs[3] = {12, 11, 10}; //digital D12, D11, D10
 WHEEL_CMD controller(ctrl_inputs, ctrl_outputs);
 
 Button BMode;
@@ -650,7 +650,7 @@ void setup() {
 void loop() {
 
     testButtons();
-    controller.update();
+    //controller.update();
 
     listenSerialCommand();
     listenControllerCommand();
