@@ -236,6 +236,9 @@ void RADIO_LCD::setBacklight(uint8_t n) {
     if (n > MAX_BACKLIGHT) {
         n = MAX_BACKLIGHT;
     }
+    if (n < 1) {
+        n = 1;
+    }
     _backlight = n;
     analogWrite(_pin, n * BACKLIGHT_STEP); //set backlight value
 };
@@ -249,7 +252,7 @@ uint8_t RADIO_LCD::backlightUp() {
 };
 
 uint8_t RADIO_LCD::backlightDown() {
-    if (_backlight > 0) {
+    if (_backlight > 1) { //don't power off the screen
         _backlight -= 1;
         analogWrite(_pin, _backlight * BACKLIGHT_STEP); //set backlight value
     }
