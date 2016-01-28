@@ -56,8 +56,9 @@
 #define LIGHT_ADDR   0
 #define VOLUME_ADDR  1
 #define MUTE_ADDR    2
-#define FREQ_ADDR    3  //uint16 on 2 byte here
-#define PREF_ADDR    5  //start of the preferences memory
+#define MODE_ADDR    3
+#define FREQ_ADDR    4  //uint16 on 2 byte here
+#define PREF_ADDR    6  //start of the preferences memory
 #define PREF_LENTGH  15 //how many preferences ?
 
 //default values if no EEPROM
@@ -85,7 +86,7 @@ Button BMode;
 Button BUp;
 Button BDown;
 
-uint8_t mode   = NORMAL_MODE;
+uint8_t mode;
 uint8_t screen = TITLE_SCREEN;
 
 uint16_t preferences[PREF_LENTGH];
@@ -201,6 +202,7 @@ String upMode() {
     command = F("Change mode to :");
     command += mode;
     changeScreen(NORMAL_MODE);
+    EEPROM.update(MODE_ADDR, mode + 1);
 
     return command;
 };
@@ -578,6 +580,7 @@ void setup() {
     Serial.begin(9600);
     Serial.println(F("Hello world"));
 
+    mode = EEPROM.read(MODE_ADDR);
     uint8_t light     = EEPROM.read(LIGHT_ADDR);
     uint8_t volume    = EEPROM.read(VOLUME_ADDR);
     uint8_t mute      = EEPROM.read(MUTE_ADDR);
@@ -597,6 +600,10 @@ void setup() {
         mute = MUTE_DEFAULT + 1;
         EEPROM.update(MUTE_ADDR, mute);
     }
+    if (mode == 0 or mode > MAX_MODE + 1) {
+        mode = NORMAL_MODE + 1;
+        EEPROM.update(MODE_ADDR, mode);
+    }
     if (frequency == 0) {
         frequency = FREQ_DEFAULT + 1;
         EEPROM.put(FREQ_ADDR, frequency);
@@ -607,6 +614,7 @@ void setup() {
     volume--;
     mute--;
     frequency--;
+    mode--;
 
     loadPreferences();
 

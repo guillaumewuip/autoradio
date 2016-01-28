@@ -10,6 +10,7 @@ void resetMemory() {
     EEPROM.write(LIGHT_ADDR, 0);
     EEPROM.write(VOLUME_ADDR, 0);
     EEPROM.write(MUTE_ADDR, 0);
+    EEPROM.write(MODE_ADDR, 0);
     writeInt16EEPROM(FREQ_ADDR, 0);
 
     //go over preferences addresses and erase them with 0
