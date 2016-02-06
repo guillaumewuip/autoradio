@@ -536,10 +536,14 @@ void initButtons() {
     BMode.setRefresh(BRefresh);
 
     BUp.assign(BUp_pin);
-    BUp.setMode(OneShot);
+    BUp.setMode(OneShotTimer);
+    BUp.setTimer(BTimer);
+    BUp.setRefresh(BRefresh);
 
     BDown.assign(BDown_pin);
-    BDown.setMode(OneShot);
+    BDown.setMode(OneShotTimer);
+    BDown.setTimer(BTimer);
+    BDown.setRefresh(BRefresh);
 };
 
 void testButtons() {
@@ -556,14 +560,30 @@ void testButtons() {
             break;
     }
 
-    if (BUp.check() == ON) {
-        Serial.println(F("BUp ON"));
-        up();
+    switch(BUp.check()) {
+        case ON:
+            Serial.println(F("BUp ON"));
+            up();
+            break;
+        case Hold:
+            Serial.println(F("BUp Hold"));
+            prefRemoveOrSave();
+            break;
+        default:
+            break;
     }
 
-    if (BDown.check() == ON) {
-        Serial.println(F("BDown ON"));
-        down();
+    switch(BDown.check()) {
+        case ON:
+            Serial.println(F("BDown ON"));
+            down();
+            break;
+        case Hold:
+            Serial.println(F("BDown Hold"));
+            prefRemoveOrSave();
+            break;
+        default:
+            break;
     }
 };
 
