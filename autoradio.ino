@@ -34,8 +34,8 @@
 #define B1_pin 3
 
 #define BMode_pin   7
-#define BUp_pin     5
-#define BDown_pin   6
+#define BUp_pin     6
+#define BDown_pin   5
 #define BTimer      700
 #define BRefresh    500
 
