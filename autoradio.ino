@@ -486,7 +486,7 @@ void listenControllerCommand() {
     uint8_t btn_source_right = controller.getButton(BTN_SOURCE_RIGHT);
     uint8_t btn_source_left = controller.getButton(BTN_SOURCE_LEFT);
 
-    uint8_t btn_mode = controller.getButton(BTN_MODE);
+    uint8_t btn_pref = controller.getButton(BTN_MODE);
 
     uint8_t wheel = controller.getWheel();
 
@@ -512,10 +512,8 @@ void listenControllerCommand() {
 
     }
 
-    if(btn_mode == PRESSED) {
-        command = upMode();
-    } else if (btn_mode == HOLD) {
-        command = resetMode();
+    if(btn_pref == PRESSED) {
+        command = prefRemoveOrSave();
     }
 
     if (wheel == WHEEL_UP) {
@@ -658,7 +656,7 @@ void setup() {
 void loop() {
 
     testButtons();
-    //controller.update();
+    controller.update();
 
     listenSerialCommand();
     listenControllerCommand();
