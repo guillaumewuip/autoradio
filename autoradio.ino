@@ -592,6 +592,11 @@ void setup() {
     pinMode(LCD_BACKLIGHT, OUTPUT); //lcd backlight led
     initButtons();
 
+    if (BMode.check() == ON) {
+        Serial.println(F("Reset memory at start"));
+        resetMemory();
+    }
+
     controller.setIntervalPress(INTERVAL_CTRL_PRESS);
     controller.setIntervalHold(INTERVAL_CTRL_HOLD);
 
@@ -657,7 +662,7 @@ void setup() {
     Serial.println(stepFrequency);
     Serial.print(F("Frequency min/max : "));
     Serial.print(minFrequency);
-    Serial.print('/');
+
     Serial.println(maxFrequency);
 
     radio.setVolume(volume);
