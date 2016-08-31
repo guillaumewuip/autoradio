@@ -17,22 +17,6 @@
 //@see https://github.com/guillaumewuip/clioSteeringWheelCmd
 #include <CLIO_STEERING_WHEEL_CMD.h>
 
-#define LCD_ADDR      0x3F
-#define LCD_BACKLIGHT 3
-
-//LCD values
-//don't know what are those constants, because we're using i2c
-//but anyway, it works
-//@see https://arduino-info.wikispaces.com/LCD-Blue-I2C
-#define En_pin 2
-#define Rw_pin 1
-#define Rs_pin 0
-#define D4_pin 4
-#define D5_pin 5
-#define D6_pin 6
-#define D7_pin 7
-#define B1_pin 3
-
 #define BMode_pin   7
 #define BUp_pin     6
 #define BDown_pin   5
@@ -71,8 +55,7 @@
 #define INTERVAL_CTRL_PRESS    20
 #define INTERVAL_CTRL_HOLD     250
 
-LiquidCrystal_I2C _lcd(LCD_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin,
-        D6_pin, D7_pin, B1_pin, POSITIVE);
+#define LCD_BACKLIGHT 3
 
 SI4703 radio;
 RDSParser rds;
@@ -589,7 +572,11 @@ void testButtons() {
 
 void setup() {
 
+    Serial.begin(9600);
+
+    Serial.println(F("Hello world"));
     pinMode(LCD_BACKLIGHT, OUTPUT); //lcd backlight led
+
     initButtons();
 
     if (BMode.check() == ON) {
@@ -600,7 +587,6 @@ void setup() {
     controller.setIntervalPress(INTERVAL_CTRL_PRESS);
     controller.setIntervalHold(INTERVAL_CTRL_HOLD);
 
-    Serial.begin(9600);
     Serial.println(F("Hello world"));
 
     mode = EEPROM.read(MODE_ADDR);

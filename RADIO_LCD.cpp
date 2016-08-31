@@ -1,6 +1,22 @@
 #include "Arduino.h"
 #include "RADIO_LCD.h"
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+
+#define LCD_ADDR      0x3F
+#define LCD_BACKLIGHT 3
+
+//LCD values
+//don't know what are those constants, because we're using i2c
+//but anyway, it works
+//@see https://arduino-info.wikispaces.com/LCD-Blue-I2C
+#define En_pin 2
+#define Rw_pin 1
+#define Rs_pin 0
+#define D4_pin 4
+#define D5_pin 5
+#define D6_pin 6
+#define D7_pin 7
+#define B1_pin 3
 
 //max width of the title string
 #define TITLE_WIDTH             16
@@ -21,8 +37,8 @@
 //max backlight value
 #define MAX_BACKLIGHT           15
 
-//import _lcd from main file
-extern LiquidCrystal _lcd;
+LiquidCrystal_I2C _lcd(LCD_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin,
+        D6_pin, D7_pin, B1_pin, POSITIVE);
 
 /**
  * repeat()
@@ -112,7 +128,7 @@ RADIO_LCD::RADIO_LCD(uint8_t pin) {
 
 void RADIO_LCD::init() {
 
-    byte charHP[8] = { //HP
+    byte charHP[8] = { // HP
         B00000,
         B00010,
         B00110,
@@ -123,7 +139,7 @@ void RADIO_LCD::init() {
         B00000
     };
 
-    byte charHPMute[8] = { //HP mute
+    byte charHPMute[8] = { // HP mute
         B00000,
         B01010,
         B00100,
@@ -135,7 +151,7 @@ void RADIO_LCD::init() {
     };
 
 
-    byte charSmileyHappy[8] = { //smiley happy
+    byte charSmileyHappy[8] = { // smiley happy
         B00000,
         B00000,
         B10001,
